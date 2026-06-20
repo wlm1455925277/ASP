@@ -37,6 +37,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.ProgressListener;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.entity.ai.village.VillageSiege;
+import net.minecraft.world.entity.npc.CatSpawner;
+import net.minecraft.world.entity.npc.wanderingtrader.WanderingTraderSpawner;
+import net.minecraft.world.level.CustomSpawner;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -50,7 +54,10 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.PrimaryLevelData;
+import net.minecraft.world.level.storage.SavedDataStorage;
 import net.minecraft.world.level.validation.DirectoryValidator;
+import net.minecraft.world.level.levelgen.PatrolSpawner;
+import net.minecraft.world.level.levelgen.PhantomSpawner;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.event.world.WorldSaveEvent;
@@ -66,6 +73,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -150,7 +158,7 @@ public class SlimeLevelInstance extends ServerLevel {
 
                 false,
                 0L,
-                Collections.emptyList(),
+                createCustomSpawners(levelStemKey, dimensionKey),
                 true,
                 levelStemKey,
 
@@ -178,6 +186,30 @@ public class SlimeLevelInstance extends ServerLevel {
                 this
         );
         this.poiDataController = new SlimePoiDataLoader(this, this.chunkTaskScheduler);
+    }
+
+    private static List<CustomSpawner> createCustomSpawners(
+            ResourceKey<LevelStem> levelStemKey,
+            ResourceKey<net.minecraft.world.level.Level> dimensionKey
+    ) {
+        if (!levelStemKey.equals(LevelStem.OVERWORLD)) {
+            return Collections.emptyList();
+        }
+
+        MinecraftServer server = MinecraftServer.getServer();
+        SavedDataStorage savedDataStorage = new ReadOnlyDimensionDataStorage(
+                CUSTOM_LEVEL_STORAGE_ACCESS.getDimensionPath(dimensionKey).resolve(LevelResource.DATA.id()),
+                server.getFixerUpper(),
+                server.registryAccess()
+        );
+
+        return List.of(
+                new PhantomSpawner(),
+                new PatrolSpawner(),
+                new CatSpawner(),
+                new VillageSiege(),
+                new WanderingTraderSpawner(savedDataStorage)
+        );
     }
 
     @Override
